@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Branch {
+  id        Int      @id @default(autoincrement())
+  name      String  @unique
+  location  String
+  phone     String?
+  email     String?   @unique
+  adminId   Int       // NEW → the admin who owns this branch
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+  users     User[]    @relation("BranchUsers")
+  admin     User      @relation("BranchAdmin", fields: [adminId], references: [id])
+  tables    Table[]
+  menus     Menu[]
+  orders    Order[]
+}
+
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  role      Role
+  branchId  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch    Branch?  @relation("BranchUsers", fields: [branchId], references: [id])
+  branches  Branch[] @relation("BranchAdmin") 
+  orders    Order[]
+  tables    Table[]
+}
+
+
+model Table {
+  id        Int          @id @default(autoincrement())
+  number    Int
+  status    TableStatus  @default(AVAILABLE)
+  branchId  Int
+  waiterId  Int?
+
+  branch    Branch       @relation(fields: [branchId], references: [id])
+  waiter    User?        @relation(fields: [waiterId], references: [id])
+  orders    Order[]
+
+  @@unique([number, branchId]) // table numbers unique per branch
+}
+
+model Menu {
+  id        Int      @id @default(autoincrement())
+  name      String
+  price     Float
+  category  String
+  isActive  Boolean  @default(true)
+  branchId  Int
+
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  orderItems OrderItem[]
+}
+
+model Order {
+  id        Int          @id @default(autoincrement())
+  userId    Int?         // staff who created the order (optional if customer)
+  tableId   Int
+  branchId  Int
+  status    OrderStatus  @default(PENDING)
+  total     Float        @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  branch    Branch       @relation(fields: [branchId], references: [id])
+  user      User?        @relation(fields: [userId], references: [id])
+  table     Table        @relation(fields: [tableId], references: [id])
+  items     OrderItem[]
+  bill      Bill?
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  menuId    Int
+  quantity  Int      @default(1)
+
+  order     Order    @relation(fields: [orderId], references: [id])
+  menu      Menu     @relation(fields: [menuId], references: [id])
+}
+model Bill {
+  id        Int      @id @default(autoincrement())
+  orderId   Int     @unique 
+  amount    Float
+  discount  Float   @default(0)
+  tax       Float   @default(0)
+  total     Float
+  paidAt    DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+enum Role {
+  ADMIN     // owner of the restaurant chain
+  MANAGER   // manages a branch
+  WAITER    // assigned to tables
+  CASHIER   // handles billing
+  CUSTOMER  // only if you want loyalty users
+  CELESTIAL // software owner
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SERVED
+  CANCELLED
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+}
