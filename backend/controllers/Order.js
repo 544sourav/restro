@@ -56,7 +56,7 @@ exports.create_order = async (req, res) => {
     });
   }
 };
-exports.getAllOrders = async (req, res) => {
+exports.get_branch_orders = async (req, res) => {
   try {
     const { branchId, status } = req.query;
 

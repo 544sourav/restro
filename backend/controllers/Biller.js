@@ -1,4 +1,4 @@
-const prisma = require("../prismaClient");
+const prisma = require("../configure/prisma");
 
 exports.create_bill = async (req, res) => {
   try {
